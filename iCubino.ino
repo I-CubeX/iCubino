@@ -1,4 +1,14 @@
 
+// iCubino
+// Infusion Systems Ltd. 
+// 
+// This Arduino sketch emulates some features of the firmware that runs on I-CubeX digitizers, 
+// and allows you to use the Arduino, or rather "iCubino", with I-CubeX software that uses host mode: 
+// Link, SensePlay, and various plugins. In all cases the I-CubeX Connect serial to MIDI mapping 
+// software utility is required. See also http://icubex.com/icubino.
+//
+
+
 #define RBL     128
 #define MAXCHAN   8
 #define SX_MAP    0  // host mode
