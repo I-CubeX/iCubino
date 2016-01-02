@@ -15,7 +15,9 @@ byte sxMsg7[7] = {240,125,0,0,0,0,247};
 byte sxLen = 0;
 byte sxCmd = 0;
 byte resetMsg[5] = {240,125,0,35,247};
-byte versionMsg[10] = {240,125,0,71,10,10,00,01,23,247};
+byte versionMsg[10] = {240,125,0,71,1,1,00,00,1,247};
+byte streamHdr[4] = {240,125,0,0};
+byte ctlMsg[3] = {176,0,0};
 
 byte midiMap = 0;
 int samplingInterval = 10;
@@ -30,15 +32,11 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
-  for (i = 0; i < 5; i++) 
-    Serial.write(resetMsg[i]);
+  Serial.write(resetMsg, 5);
 
   if (midiMap) {
-
     delay(RESET_PAUSE);
-
-    for (i = 0; i < 5; i++) 
-      Serial.write(resetMsg[i]);
+    Serial.write(resetMsg, 5);
   }
 }
 
@@ -64,10 +62,9 @@ while (rbt != rbh) {
     sxLen++;
   else if (rb[rbt] == 247) {
     sxLen++;
-        
+    
     if ((sxLen == 5) && (sxCmd == 71)) { // VERSION command
-      for (i = 0; i < 10; i++) 
-        Serial.write(versionMsg[i]);
+      Serial.write(versionMsg, 10);
         
     } else if ((sxLen == 6) && (sxCmd == 1)) { // STREAM command
       if (rb[(rbt + RBL - 1) % RBL] & 64)
@@ -76,33 +73,28 @@ while (rbt != rbh) {
         onChans = onChans & (~(1 << (rb[(rbt + RBL - 1) % RBL] & 7)));
       sxMsg6[3] = 1;
       sxMsg6[4] = rb[(rbt + RBL - 1) % RBL];
-      for (i = 0; i < 6; i++) 
-        Serial.write(sxMsg6[i]);
+      Serial.write(sxMsg6, 6);
         
    } else if ((sxLen == 6) && (sxCmd == 2)) { // RES command (not implemented)
       sxMsg6[3] = 2;
       sxMsg6[4] = rb[(rbt + RBL - 1) % RBL];
-      for (i = 0; i < 6; i++) 
-        Serial.write(sxMsg6[i]);
+      Serial.write(sxMsg6, 6);
         
    } else if ((sxLen == 7) && (sxCmd == 3)) { // INTERVAL command
       samplingInterval = (rb[(rbt + RBL - 2) % RBL] << 7) | rb[(rbt + RBL - 1) % RBL];
       sxMsg7[3] = 3;
       sxMsg7[4] = samplingInterval >> 7;
       sxMsg7[5] = samplingInterval & 0x7F;
-      for (i = 0; i < 7; i++) 
-        Serial.write(sxMsg7[i]);
+      Serial.write(sxMsg7, 7);
       
     } else if ((sxLen == 6) && (sxCmd == 90)) { // MODE command
       midiMap = rb[(rbt + RBL - 1) % RBL];
       sxMsg6[3] = 91;
       sxMsg6[4] = midiMap;
-      for (i = 0; i < 6; i++) 
-        Serial.write(sxMsg6[i]);
+      Serial.write(sxMsg6, 6);
         
     } else if ((sxLen == 5) && (sxCmd == 34)) { // RESET command
-      for (i = 0; i < 5; i++) 
-        Serial.write(resetMsg[i]);
+      Serial.write(resetMsg, 5);
     }
     sxLen = 0;
   }
@@ -113,10 +105,7 @@ delay(samplingInterval);
 if (onChans) {
   if (midiMap == SX_MAP) { // send sensor value as sysex MIDI message
   
-    Serial.write(240);
-    Serial.write(125);
-    Serial.write(0);
-    Serial.write(0); // STREAM message
+    Serial.write(streamHdr, 4); // send STREAM message header
   
     for (i = 0; i < MAXCHAN; i++) {
   
@@ -141,11 +130,11 @@ if (onChans) {
         sensVal = analogRead(i);
   
         mapVal = (sensVal * 128) / 1024;
-        
-        Serial.write(176);  // control change message
-        Serial.write(i);    // control change number
-        Serial.write(mapVal);
-        
+
+        ctlMsg[1] = i;  // control change number
+        ctlMsg[2] = mapVal; // control change value
+        Serial.write(ctlMsg, 3);  // send control change message
+                
       }
     }
   }
